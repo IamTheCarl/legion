@@ -1,17 +1,23 @@
 //! Contains types related to entity components.
 
 use std::{
-    any::TypeId,
+    any::TypeId as InternalTypeId,
     fmt::{Display, Formatter},
     hash::Hasher,
 };
 
 use super::{packed::PackedStorage, ComponentStorage};
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TypeId {
+    Internal(InternalTypeId),
+    External(u64),
+}
+
 /// A unique ID for a component type.
 #[derive(Copy, Clone, Debug, Eq, PartialOrd, Ord)]
 pub struct ComponentTypeId {
-    pub(crate) type_id: TypeId,
+    type_id: TypeId,
     #[cfg(debug_assertions)]
     name: &'static str,
 }
@@ -20,21 +26,19 @@ impl ComponentTypeId {
     /// Constructs the component type ID for the given component type.
     pub fn of<T: Component>() -> Self {
         Self {
-            type_id: TypeId::of::<T>(),
+            type_id: TypeId::Internal(InternalTypeId::of::<T>()),
             #[cfg(debug_assertions)]
             name: std::any::type_name::<T>(),
         }
-    }
-
-    /// Returns the internal TypeID of the component.
-    pub fn type_id(&self) -> TypeId {
-        self.type_id
     }
 }
 
 impl std::hash::Hash for ComponentTypeId {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.type_id.hash(state);
+        match self.type_id {
+            TypeId::Internal(type_id) => type_id.hash(state),
+            TypeId::External(type_id) => type_id.hash(state),
+        }
     }
 }
 
